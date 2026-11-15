@@ -147,7 +147,7 @@ $("btn").addEventListener("click", async () => {
     $("tm06").textContent=`M ${tm.x.toFixed(2)}\nP ${tm.y.toFixed(2)}`;
     $("tm06").style.whiteSpace="pre";
     $("prec").textContent=`± ${Math.round(acc)} m`;
-    $("mapa").href=`https://maps.apple.com/?ll=${lat},${lon}&q=Estou%20aqui`;
+    $("mapa").href=`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
     ["rua","lugar","cp","freg","conc","dist"].forEach(i=>$(i).textContent="…");
     $("estado").textContent="A consultar DGT e OpenStreetMap…";
 
