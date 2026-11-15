@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Onde Estou">
 <meta name="theme-color" content="#0f3d2e">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">\n<link rel="manifest" href="manifest.webmanifest">\n<meta name="application-name" content="Onde Estou">
 <title>Onde Estou</title>
 <style>
   :root{--verde:#0f3d2e;--verde2:#1f6b4f;--fundo:#f3f1ea;--texto:#1b1b1b;--cinza:#6b6b6b;}
@@ -193,5 +193,5 @@ $("copiar").addEventListener("click", async () => {
   catch(e){ $("estado").textContent="Não deu para copiar."; }
 });
 </script>
-</body>
+<script>\nif ("serviceWorker" in navigator) {\n  window.addEventListener("load", () => {\n    navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(error => console.warn("PWA:", error));\n  });\n}\n</script>\n</body>
 </html>
