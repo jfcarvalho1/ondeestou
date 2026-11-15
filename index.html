@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Onde Estou">
+<meta name="theme-color" content="#0f3d2e">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Onde Estou</title>
+<style>
+  :root{--verde:#0f3d2e;--verde2:#1f6b4f;--fundo:#f3f1ea;--texto:#1b1b1b;--cinza:#6b6b6b;}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--fundo);color:var(--texto);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;}
+  body{padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 24px);}
+  h1{font-size:22px;margin:0 0 4px;color:var(--verde)}
+  .sub{color:var(--cinza);font-size:13px;margin:0 0 18px}
+  #btn{width:100%;padding:22px;font-size:22px;font-weight:700;border:0;border-radius:18px;
+    background:var(--verde);color:#fff;box-shadow:0 4px 14px rgba(15,61,46,.3)}
+  #btn:active{background:var(--verde2)}
+  #btn:disabled{opacity:.6}
+  #estado{text-align:center;color:var(--cinza);font-size:14px;margin:12px 0;min-height:18px}
+  .card{background:#fff;border-radius:16px;padding:6px 16px;margin-top:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .linha{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #eee}
+  .linha:last-child{border-bottom:0}
+  .rot{color:var(--cinza);font-size:14px;flex:0 0 110px}
+  .val{font-size:17px;font-weight:600;text-align:right;word-break:break-word}
+  .fonte{display:block;font-size:11px;font-weight:400;color:var(--cinza);margin-top:2px}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:15px}
+  .acoes{display:flex;gap:10px;margin-top:12px}
+  .acoes a,.acoes button{flex:1;text-align:center;padding:13px;border-radius:12px;font-size:15px;font-weight:600;
+    border:1px solid var(--verde);background:#fff;color:var(--verde);text-decoration:none}
+  #res{display:none}
+  .rodape{font-size:11px;color:var(--cinza);margin-top:18px;line-height:1.5;text-align:center}
+</style>
+</head>
+<body>
+  <h1>📍 Onde Estou</h1>
+  <p class="sub">GPS do iPhone · limites oficiais CAOP (DGT)</p>
+
+  <button id="btn">Onde estou?</button>
+  <div id="estado"></div>
+
+  <div id="res">
+    <div class="card">
+      <div class="linha"><span class="rot">Rua</span><span class="val" id="rua">—</span></div>
+      <div class="linha"><span class="rot">Lugar</span><span class="val" id="lugar">—</span></div>
+      <div class="linha"><span class="rot">Cód. postal</span><span class="val" id="cp">—</span></div>
+    </div>
+    <div class="card">
+      <div class="linha"><span class="rot">Freguesia</span><span class="val" id="freg">—</span></div>
+      <div class="linha"><span class="rot">Concelho</span><span class="val" id="conc">—</span></div>
+      <div class="linha"><span class="rot">Distrito</span><span class="val" id="dist">—</span></div>
+    </div>
+    <div class="card">
+      <div class="linha"><span class="rot">ETRS89 / PT-TM06<span class="fonte">EPSG:3763</span></span><span class="val mono" id="tm06">—</span></div>
+      <div class="linha"><span class="rot">Precisão</span><span class="val" id="prec">—</span></div>
+    </div>
+    <div class="acoes">
+      <button id="copiar">Copiar tudo</button>
+      <a id="mapa" href="#" target="_blank" rel="noopener">Ver no mapa</a>
+    </div>
+  </div>
+
+  <div class="rodape">Freguesia, concelho e distrito: CAOP — Direção-Geral do Território.<br>
+  Rua e lugar: OpenStreetMap (Nominatim). Coordenadas só em ETRS89 / PT-TM06 (EPSG:3763).</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const DGT = "https://ogcapi.dgterritorio.gov.pt/collections/freguesias/items";
+const OSM = "https://nominatim.openstreetmap.org/reverse";
+let ultimoTexto = "";
+
+/* ---------- ETRS89 (lat/lon) -> PT-TM06 (EPSG:3763) ---------- */
+function ptTM06(latDeg, lonDeg){
+  const a=6378137, f=1/298.257222101, k0=1;
+  const lat0=39.66825833333333*Math.PI/180, lon0=-8.133108333333334*Math.PI/180;
+  const e2=f*(2-f), ep2=e2/(1-e2);
+  const M=(p)=>a*((1-e2/4-3*e2*e2/64-5*e2**3/256)*p
+            -(3*e2/8+3*e2*e2/32+45*e2**3/1024)*Math.sin(2*p)
+            +(15*e2*e2/256+45*e2**3/1024)*Math.sin(4*p)
+            -(35*e2**3/3072)*Math.sin(6*p));
+  const p=latDeg*Math.PI/180, l=lonDeg*Math.PI/180;
+  const N=a/Math.sqrt(1-e2*Math.sin(p)**2), T=Math.tan(p)**2, C=ep2*Math.cos(p)**2;
+  const A=(l-lon0)*Math.cos(p);
+  const x=k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T*T+72*C-58*ep2)*A**5/120);
+  const y=k0*(M(p)-M(lat0)+N*Math.tan(p)*(A*A/2+(5-T+9*C+4*C*C)*A**4/24
+          +(61-58*T+T*T+600*C-330*ep2)*A**6/720));
+  return {x, y};
+}
+
+function getPos(){
+  return new Promise((ok, erro) => {
+    if(!navigator.geolocation) return erro(new Error("Este navegador não tem GPS disponível."));
+    navigator.geolocation.getCurrentPosition(ok, erro,
+      {enableHighAccuracy:true, timeout:25000, maximumAge:0});
+  });
+}
+
+async function getJSON(url, ms=15000){
+  const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), ms);
+  try{
+    const r = await fetch(url, {signal:ctl.signal, headers:{"Accept":"application/json"}});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+async function caopDGT(lat, lon){
+  const d=0.00001;
+  const url = `${DGT}?f=json&skipGeometry=true&limit=5&bbox=${lon-d},${lat-d},${lon+d},${lat+d}`;
+  const j = await getJSON(url);
+  const f = (j.features||[])[0];
+  if(!f) return null;
+  const p = f.properties||{};
+  return {
+    freg: p.freguesia || p.Freguesia || null,
+    conc: p.municipio || p.concelho || p.Concelho || null,
+    dist: p.distrito_ilha || p.distrito || p.Distrito || null
+  };
+}
+
+async function moradaOSM(lat, lon){
+  const url = `${OSM}?format=jsonv2&addressdetails=1&zoom=18&accept-language=pt-PT&lat=${lat}&lon=${lon}`;
+  const j = await getJSON(url);
+  return j.address || {};
+}
+
+function poe(id, valor, fonte){
+  const el=$(id);
+  el.textContent = valor || "—";
+  if(valor && fonte){ const s=document.createElement("span"); s.className="fonte"; s.textContent=fonte; el.appendChild(s); }
+}
+
+$("btn").addEventListener("click", async () => {
+  const btn=$("btn");
+  btn.disabled=true; $("estado").textContent="A obter posição GPS…";
+  try{
+    const pos = await getPos();
+    const lat=pos.coords.latitude, lon=pos.coords.longitude, acc=pos.coords.accuracy;
+    const tm=ptTM06(lat, lon);
+    $("res").style.display="block";
+    $("tm06").textContent=`M ${tm.x.toFixed(2)}\nP ${tm.y.toFixed(2)}`;
+    $("tm06").style.whiteSpace="pre";
+    $("prec").textContent=`± ${Math.round(acc)} m`;
+    $("mapa").href=`https://maps.apple.com/?ll=${lat},${lon}&q=Estou%20aqui`;
+    ["rua","lugar","cp","freg","conc","dist"].forEach(i=>$(i).textContent="…");
+    $("estado").textContent="A consultar DGT e OpenStreetMap…";
+
+    const [rDGT, rOSM] = await Promise.allSettled([caopDGT(lat,lon), moradaOSM(lat,lon)]);
+    const a = rOSM.status==="fulfilled" ? rOSM.value : {};
+    const c = rDGT.status==="fulfilled" ? rDGT.value : null;
+
+    const rua = a.road ? (a.road + (a.house_number ? ", "+a.house_number : "")) : null;
+    const lugar = a.hamlet || a.isolated_dwelling || a.locality || a.neighbourhood ||
+                  a.quarter || a.village || a.suburb || a.town || a.city || null;
+    poe("rua", rua, "OSM"); poe("lugar", lugar, "OSM"); poe("cp", a.postcode || null, "OSM");
+
+    let fonteAdm="CAOP · DGT";
+    let freg=c&&c.freg, conc=c&&c.conc, dist=c&&c.dist;
+    if(!c){ // sem resposta da DGT (fora do Continente ou serviço em baixo)
+      fonteAdm="OSM (DGT indisponível)";
+      freg = a.village || a.suburb || null;
+      conc = a.municipality || a.city || a.town || null;
+      dist = a.county || a.state_district || a.state || null;
+    }
+    poe("freg", freg, fonteAdm); poe("conc", conc, fonteAdm); poe("dist", dist, fonteAdm);
+
+    ultimoTexto =
+      `Rua: ${rua||"—"}\nLugar: ${lugar||"—"}\nCód. postal: ${a.postcode||"—"}\n`+
+      `Freguesia: ${freg||"—"}\nConcelho: ${conc||"—"}\nDistrito: ${dist||"—"}\n`+
+      `ETRS89 / PT-TM06 (EPSG:3763): M ${tm.x.toFixed(2)}  P ${tm.y.toFixed(2)} (±${Math.round(acc)} m)`;
+
+    $("estado").textContent = new Date().toLocaleTimeString("pt-PT") + (c ? "" : " · aviso: DGT sem resposta, usei OSM");
+  }catch(e){
+    let msg = e && e.message ? e.message : String(e);
+    if(e && e.code===1) msg="Sem autorização de localização. Em Definições › Privacidade › Serviços de localização › Safari, escolhe “Ao usar a app”.";
+    else if(e && e.code===2) msg="Não consegui sinal GPS. Tenta ao ar livre.";
+    else if(e && e.code===3) msg="O GPS demorou demasiado. Carrega outra vez.";
+    $("estado").textContent = msg;
+  }finally{
+    btn.disabled=false;
+  }
+});
+
+$("copiar").addEventListener("click", async () => {
+  if(!ultimoTexto) return;
+  try{ await navigator.clipboard.writeText(ultimoTexto); $("estado").textContent="Copiado ✔"; }
+  catch(e){ $("estado").textContent="Não deu para copiar."; }
+});
+</script>
+</body>
+</html>
