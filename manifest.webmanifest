@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "Onde Estou",
+  "short_name": "Onde Estou",
+  "description": "Localização GPS, morada e coordenadas ETRS89 / PT-TM06.",
+  "lang": "pt-PT",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f3f1ea",
+  "theme_color": "#0f3d2e",
+  "icons": [
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any"}
+  ]
+}
