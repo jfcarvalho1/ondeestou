@@ -16,3 +16,6 @@ O APK de debug não está assinado para distribuição na Play Store. Pode ser i
 
 ## Compilar localmente no Windows
 Instalar Android Studio e JDK 17, abrir esta pasta android no Android Studio e executar a tarefa Gradle `:app:assembleDebug`.
+
+
+Build CI: commit APK build request 2026-11-15.
